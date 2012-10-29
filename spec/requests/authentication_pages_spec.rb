@@ -55,6 +55,13 @@ describe "Authentication" do
 
       describe "in the Users controller" do
 
+        describe "visiting the home page" do
+          before { visit root_path }
+          it { should_not have_link('Profile', href: user_path(user)) }
+          it { should_not have_link('Settings', href: edit_user_path(user)) }
+          it { should_not have_link('Sign out', href: signout_path) }
+        end
+
         describe "visiting the edit page" do
           before { visit edit_user_path(user) }
           it { should have_valid_header_and_title(nil, 'Sign in') }
@@ -65,7 +72,7 @@ describe "Authentication" do
           specify { response.should redirect_to(signin_path) }
         end
 
-        describe "friendly forward after sign in" do
+        describe "when attempting to visit a protected page" do
           before do
             visit edit_user_path(user)
             fill_in "Email",    with: user.email
@@ -78,8 +85,21 @@ describe "Authentication" do
             it "should render the desired protected page" do
               page.should have_selector('title', text: 'Edit user')
             end
-          end
 
+            describe "when signing in again" do
+              before do
+                delete signout_path
+                visit signin_path
+                fill_in "Email",    with: user.email
+                fill_in "Password", with: user.password
+                click_button "Sign in"
+              end
+
+              it "should render the default (profile) page" do
+                page.should have_selector('title', text: user.name)
+              end
+            end
+          end
         end
 
         describe "visiting the user index" do
@@ -114,6 +134,22 @@ describe "Authentication" do
 
       describe "submitting a DELETE request to the Users#destroy action" do
         before { delete user_path(user) }
+        specify { response.should redirect_to(root_path) }
+      end
+    end
+
+    describe "as signed in user" do
+      let(:user) { FactoryGirl.create(:user) }
+      before { valid_signin user }
+
+      describe "trying to sign up" do
+        before { visit signup_path }
+        it { should have_valid_header_and_title('Sample App', '') }
+        # specify { response.should redirect_to(root_path) }
+      end
+
+      describe "trying to create user" do
+        before { post signup_path }
         specify { response.should redirect_to(root_path) }
       end
     end
